@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from textwrap import dedent
 from typing import Dict, List, Tuple
 from PIL import Image, ImageDraw
 
@@ -37,6 +38,40 @@ class Board:
     def __init__(self, width: int, height: int) -> None:
         self.width = width
         self.height = height
+
+    @staticmethod
+    def from_ascii_art(text: str) -> 'Board':
+        lines = dedent(text).splitlines()
+
+        assert len(lines) >= 1
+        assert len(lines[0]) % 2 == 1
+
+        w = (len(lines[0]) - 1) // 2
+        h = len(lines) - 1
+
+        board = Board(w, h)
+
+        for i, line in enumerate(lines):
+            assert len(line) == len(lines[0])
+            for j, col in enumerate(line):
+                if j % 2 == 0:
+                    x, y = j // 2, i - 1
+                    if col == '|':
+                        board.vwall(x, y)
+                    elif col == '.':
+                        pass
+                    else:
+                        raise ValueError()
+                else:
+                    x, y = (j - 1) // 2, i
+                    if col == '_':
+                        board.hwall(x, y)
+                    elif col == ' ':
+                        pass
+                    else:
+                        raise ValueError()
+
+        return board
 
     def wall(self, points: List[int]) -> None:
         assert len(points) % 2 == 0
@@ -161,11 +196,26 @@ class Robot:
 
 
 def main():
-    board = Board(12, 12)
+    # board = Board(12, 12)
+    # board.vwall(11, 1)
+    # board.hwall(10, 11)
+    board = Board.from_ascii_art("""\
+        . . . . . . . . . . . . .
+        . . . . . . . . . . . . .
+        . . . . . . . . . . . | .
+        . . . . . . . . . . . . .
+        . . . . . . . . . . . . .
+        . . . . . . . . . . . . .
+        . . . . . . . . . . . . .
+        . . . . . . . . . . . . .
+        . . . . . . . . . . . . .
+        . . . . . . . . . . . . .
+        . . . . . . . . . . . . .
+        . . . . . . . . . . ._. .
+        . . . . . . . . . . . . .
+    """)
     r0 = Robot()
     board.put(r0, 1, 1)
-    board.vwall(11, 1)
-    board.hwall(10, 11)
     r1 = Robot()
     board.put(r1, 1, 10)
     board.move(r0, Dir.RIGHT)

@@ -211,6 +211,15 @@ class Board(Component):
         return images
 
 
+    def save(self, path: str) -> None:
+        images = self.render_all()
+        dur = 40
+        durations = [dur] * len(images)
+        durations[0] = dur * 10
+        durations[-1] = dur * 10
+        images[0].save(path, save_all=True, append_images=images[1:], optimize=False, duration=durations, loop=0)
+
+
 class Robot:
     def __init__(self, name: Optional[str] = None) -> None:
         self.name = name
@@ -228,32 +237,30 @@ class HalfAdder(Component):
         super().__init__(0, 0)
 
         self.put_walls_from_ascii_art("""\
-            . . . . . . . . . .
-            . . . . ._. . . . .
-            . . . ._| |_. . . .
-            . . ._| . | | . . .
-            . . ._. | | | . . .
-            . . . |_. . | . . .
-            . . ._| . | | . . .
-            . . ._. | | | . . .
-            . . . |_. . |_. . .
-            . . . |_._. ._. | .
-            . . . . . |_._. | .
-            . . . . . . . . . .
+            . ._. .
+            ._| |_.
+            | . | |
+            . | | |
+            |_. . |
+            | . | |
+            . | | |
+            |_. . |
+            |_._. .
+            . . |_.
         """)
 
         self.r0 = Robot()
-        self.put(self.r0, 3, 2)
+        self.put(self.r0, 0, 1)
         self.r1 = Robot()
-        self.put(self.r1, 3, 5)
+        self.put(self.r1, 0, 4)
         self.r2 = Robot()
-        self.put(self.r2, 4, 1)
+        self.put(self.r2, 1, 0)
         self.rc = Robot('C')
-        self.put(self.rc, 5, 3)
+        self.put(self.rc, 2, 2)
         self.r3 = Robot()
-        self.put(self.r3, 5, 2)
+        self.put(self.r3, 2, 1)
         self.rs = Robot('S')
-        self.put(self.rs, 3, 8)
+        self.put(self.rs, 0, 7)
 
 
     def execute(self) -> None:
@@ -268,8 +275,23 @@ class HalfAdder(Component):
         self.move(self.rc, RIGHT)
 
 
-def main():
+def half_adder():
     board = Board(9, 11)
+
+    board.put_walls_from_ascii_art("""\
+        . . . . . . . . . .
+        . . . . . . . . . .
+        . . . . . . . . . .
+        . . ._. . . . . . .
+        . . ._. . . . . . .
+        . . . . . . . . . .
+        . . ._. . . . . . .
+        . . ._. . . . . . .
+        . . . . . . ._. . .
+        . . . . . . ._. | .
+        . . . . . . ._. | .
+        . . . . . . . . . .
+    """)
 
     ra = Robot('A')
     board.put(ra, 1, 3)
@@ -277,18 +299,71 @@ def main():
     board.put(rb, 1, 6)
 
     ha0 = HalfAdder()
-    board.put_component(ha0, 0, 0)
+    board.put_component(ha0, 3, 1)
 
     board.move(ra, RIGHT)
     board.move(rb, RIGHT)
     ha0.execute()
 
-    images = board.render_all()
-    dur = 40
-    durations = [dur] * len(images)
-    durations[0] = dur * 10
-    durations[-1] = dur * 10
-    images[0].save('half_adder.gif', save_all=True, append_images=images[1:], optimize=False, duration=durations, loop=0)
+    board.save('images/half_adder.gif')
+
+
+def full_adder():
+    board = Board(14, 17)
+
+    board.put_walls_from_ascii_art("""\
+        . . . . . . . . . . . . . . .
+        . . . . . . . . . . . . . . .
+        . . . . . . . . . . . . . . .
+        . . ._. . . . . . . . . . . .
+        . . ._. . . . . . . ._. . . .
+        . . . . . . ._._._._| | . . .
+        . . ._. . . . . . . . | . . .
+        . . ._. . . . . . . . | . . .
+        . . . . . . . . . . . | . . .
+        . . . . . . . . . . . | . . .
+        . . . . . . ._. . . . | . . .
+        . . . . . . ._. . . . | . . .
+        . . . . . . ._. . . . | . . .
+        . . . . . . . . . . . |_. . .
+        . . . . . . . . . . . ._. | .
+        . . . . . . . . . . . |_. . .
+        . . . . . . . . . |_._._. | .
+        . . . . . . . . . . . . . . .
+    """)
+
+    ra = Robot('A')
+    board.put(ra, 1, 3)
+    rb = Robot('B')
+    board.put(rb, 1, 6)
+    rx = Robot('X')
+    board.put(rx, 5, 11)
+    r0 = Robot()
+    board.put(r0, 10, 4)
+    rc = Robot('C')
+    board.put(rc, 9, 15)
+
+    ha0 = HalfAdder()
+    board.put_component(ha0, 3, 1)
+
+    ha1 = HalfAdder()
+    board.put_component(ha1, 7, 6)
+
+    board.move(ra, RIGHT)
+    board.move(rb, RIGHT)
+    board.move(rx, RIGHT)
+    ha0.execute()
+    board.move(ha0.rc, UP)
+    board.move(ha0.rc, RIGHT)
+    ha1.execute()
+    board.move(r0, DOWN)
+    board.move(rc, RIGHT)
+
+    board.save('images/full_adder.gif')
+
+
+def main():
+    full_adder()
 
 
 if __name__ == '__main__':

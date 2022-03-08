@@ -33,31 +33,30 @@ LEFT = Dir.LEFT
 RIGHT = Dir.RIGHT
 
 class Component:
-    pass
-
-
-class Board(Component):
-    hwalls: List['Pos'] = []
-    vwalls: List['Pos'] = []
-    robots: List['Robot'] = []
-    robot_positions: Dict['Robot', 'Pos'] = {}
-    history: List[Tuple['Robot', 'Dir']] = []
+    hwalls: List['Pos']
+    vwalls: List['Pos']
+    robots: List['Robot']
+    robot_positions: Dict['Robot', 'Pos']
+    history: List[Tuple['Robot', 'Dir']]
 
     def __init__(self, width: int, height: int) -> None:
         self.width = width
         self.height = height
+        self.hwalls = []
+        self.vwalls = []
+        self.robots = []
+        self.robot_positions = {}
+        self.history = []
 
-    @staticmethod
-    def from_ascii_art(text: str) -> 'Board':
+
+    def put_walls_from_ascii_art(self, text: str) -> None:
         lines = dedent(text).splitlines()
 
         assert len(lines) >= 1
         assert len(lines[0]) % 2 == 1
 
-        w = (len(lines[0]) - 1) // 2
-        h = len(lines) - 1
-
-        board = Board(w, h)
+        # w = (len(lines[0]) - 1) // 2
+        # h = len(lines) - 1
 
         for i, line in enumerate(lines):
             assert len(line) == len(lines[0])
@@ -65,7 +64,7 @@ class Board(Component):
                 if j % 2 == 0:
                     x, y = j // 2, i - 1
                     if col == '|':
-                        board.vwall(x, y)
+                        self.put_vwall(x, y)
                     elif col == '.':
                         pass
                     else:
@@ -73,24 +72,23 @@ class Board(Component):
                 else:
                     x, y = (j - 1) // 2, i
                     if col == '_':
-                        board.hwall(x, y)
+                        self.put_hwall(x, y)
                     elif col == ' ':
                         pass
                     else:
                         raise ValueError()
 
-        return board
 
-    def wall(self, points: List[int]) -> None:
+    def put_walls(self, points: List[int]) -> None:
         assert len(points) % 2 == 0
         for i in range(len(points) - 2):
             x1, y1, x2, y2 = points[i:i+4]
             # TODO
 
-    def hwall(self, x: int, y: int) -> None:
+    def put_hwall(self, x: int, y: int) -> None:
         self.hwalls.append((x, y))
 
-    def vwall(self, x: int, y: int) -> None:
+    def put_vwall(self, x: int, y: int) -> None:
         self.vwalls.append((x, y))
 
     def put(self, robot: 'Robot', x: int, y: int) -> None:
@@ -99,6 +97,16 @@ class Board(Component):
 
     def move(self, robot: 'Robot', dir: 'Dir') -> None:
         self.history.append((robot, dir))
+
+
+class Board(Component):
+    def put_component(self, component: 'Component', x: int, y: int) -> None:
+        self.hwalls.extend([(x0 + x, y0 + y) for x0, y0 in component.hwalls])
+        self.vwalls.extend([(x0 + x, y0 + y) for x0, y0 in component.vwalls])
+        self.robots.extend(component.robots)
+        self.robot_positions.update((r, (x0 + x, y0 + y)) for r, (x0, y0) in component.robot_positions.items())
+        component.history = self.history
+
 
     def render(self) -> Image.Image:
         w = self.width
@@ -208,50 +216,72 @@ class Robot:
         self.name = name
 
 
-def half_adder():
-    board = Board.from_ascii_art("""\
-        . . . . . . . . . .
-        . . . . ._. . . . .
-        . . . ._| |_. . . .
-        . . ._| . | | . . .
-        . . ._. | | | . . .
-        . . . |_. . | . . .
-        . . ._| . | | . . .
-        . . ._. | | | . . .
-        . . . |_. . |_. . .
-        . . . |_._. ._. | .
-        . . . . . |_._. | .
-        . . . . . . . . . .
-    """)
+class HalfAdder(Component):
+    r0: Robot
+    r1: Robot
+    r2: Robot
+    rc: Robot
+    r3: Robot
+    rs: Robot
+
+    def __init__(self) -> None:
+        super().__init__(0, 0)
+
+        self.put_walls_from_ascii_art("""\
+            . . . . . . . . . .
+            . . . . ._. . . . .
+            . . . ._| |_. . . .
+            . . ._| . | | . . .
+            . . ._. | | | . . .
+            . . . |_. . | . . .
+            . . ._| . | | . . .
+            . . ._. | | | . . .
+            . . . |_. . |_. . .
+            . . . |_._. ._. | .
+            . . . . . |_._. | .
+            . . . . . . . . . .
+        """)
+
+        self.r0 = Robot()
+        self.put(self.r0, 3, 2)
+        self.r1 = Robot()
+        self.put(self.r1, 3, 5)
+        self.r2 = Robot()
+        self.put(self.r2, 4, 1)
+        self.rc = Robot('C')
+        self.put(self.rc, 5, 3)
+        self.r3 = Robot()
+        self.put(self.r3, 5, 2)
+        self.rs = Robot('S')
+        self.put(self.rs, 3, 8)
+
+
+    def execute(self) -> None:
+        self.move(self.r0, DOWN)
+        self.move(self.r0, RIGHT)
+        self.move(self.r1, DOWN)
+        self.move(self.r1, RIGHT)
+        self.move(self.r2, DOWN)
+        self.move(self.rc, DOWN)
+        self.move(self.r3, DOWN)
+        self.move(self.rs, RIGHT)
+        self.move(self.rc, RIGHT)
+
+
+def main():
+    board = Board(9, 11)
+
     ra = Robot('A')
     board.put(ra, 1, 3)
     rb = Robot('B')
     board.put(rb, 1, 6)
-    r0 = Robot()
-    board.put(r0, 3, 2)
-    r1 = Robot()
-    board.put(r1, 3, 5)
-    r2 = Robot()
-    board.put(r2, 4, 1)
-    rc = Robot('C')
-    board.put(rc, 5, 3)
-    r3 = Robot()
-    board.put(r3, 5, 2)
-    rs = Robot('S')
-    board.put(rs, 3, 8)
+
+    ha0 = HalfAdder()
+    board.put_component(ha0, 0, 0)
 
     board.move(ra, RIGHT)
     board.move(rb, RIGHT)
-
-    board.move(r0, DOWN)
-    board.move(r0, RIGHT)
-    board.move(r1, DOWN)
-    board.move(r1, RIGHT)
-    board.move(r2, DOWN)
-    board.move(rc, DOWN)
-    board.move(r3, DOWN)
-    board.move(rs, RIGHT)
-    board.move(rc, RIGHT)
+    ha0.execute()
 
     images = board.render_all()
     dur = 40
@@ -261,42 +291,5 @@ def half_adder():
     images[0].save('half_adder.gif', save_all=True, append_images=images[1:], optimize=False, duration=durations, loop=0)
 
 
-half_adder()
-
-
-def main():
-    # board = Board(12, 12)
-    # board.vwall(11, 1)
-    # board.hwall(10, 11)
-    board = Board.from_ascii_art("""\
-        . . . . . . . . . . . . .
-        . . . . . . . . . . . . .
-        . . . . . . . . . . . | .
-        . . . . . . . . . . . . .
-        . . . . . . . . . . . . .
-        . . . . . . . . . . . . .
-        . . . . . . . . . . . . .
-        . . . . . . . . . . . . .
-        . . . . . . . . . . . . .
-        . . . . . . . . . . . . .
-        . . . . . . . . . . . . .
-        . . . . . . . . . . ._. .
-        . . . . . . . . . . . . .
-    """)
-    r0 = Robot()
-    board.put(r0, 1, 1)
-    r1 = Robot()
-    board.put(r1, 1, 10)
-    board.move(r0, Dir.RIGHT)
-    board.move(r0, Dir.DOWN)
-    board.move(r0, Dir.LEFT)
-
-    images = board.render_all()
-    dur = 40
-    durations = [dur] * len(images)
-    durations[0] = dur * 10
-    durations[-1] = dur * 10
-    images[0].save('image.gif', save_all=True, append_images=images[1:], optimize=False, duration=durations, loop=0)
-
-
-# main()
+if __name__ == '__main__':
+    main()

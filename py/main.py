@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from textwrap import dedent
-from typing import Dict, List, Tuple
-from PIL import Image, ImageDraw
+from typing import Dict, List, Optional, Tuple
+from PIL import Image, ImageDraw, ImageFont
 
 images = []
 
@@ -27,8 +27,16 @@ class Dir(Enum):
         elif self == Dir.RIGHT:
             return (1, 0)
 
+UP = Dir.UP
+DOWN = Dir.DOWN
+LEFT = Dir.LEFT
+RIGHT = Dir.RIGHT
 
-class Board:
+class Component:
+    pass
+
+
+class Board(Component):
     hwalls: List['Pos'] = []
     vwalls: List['Pos'] = []
     robots: List['Robot'] = []
@@ -95,8 +103,8 @@ class Board:
     def render(self) -> Image.Image:
         w = self.width
         h = self.height
-        width = w * size
-        height = h * size
+        width = w * size + 2
+        height = h * size + 2
 
         # Note: RGB mode is too slow
         im = Image.new('P', (width, height), '#F5F5DB')
@@ -111,16 +119,21 @@ class Board:
         # Render walls
         for x, y in self.vwalls:
             border = 5
-            draw.line([(x * size, y * size - border), (x * size, (y + 1) * size + border)], fill='#38382D', width=border * 2)
+            draw.line([(x * size, y * size - border + 1), (x * size, (y + 1) * size + border)], fill='#38382D', width=border * 2)
         for x, y in self.hwalls:
             border = 5
-            draw.line([(x * size - border, y * size), ((x + 1) * size + border, y * size)], fill='#38382D', width=border * 2)
+            draw.line([(x * size - border + 1, y * size), ((x + 1) * size + border, y * size)], fill='#38382D', width=border * 2)
 
         # Render robots
+        font = ImageFont.truetype('DejaVuSans', size=int(size * 0.5) & -2)
         for robot, pos in self.robot_positions.items():
             x, y = pos
             padding = (size - robot_size) / 2
             draw.ellipse([(x * size + padding, y * size + padding), ((x + 1) * size - padding, (y + 1) * size - padding)], fill='#FFFFFF', outline='#000000', width=1)
+            if robot.name:
+                # tw, th = draw.textsize(robot.name, font=font)
+                draw.text(((x + 0.5) * size + 1, (y + 0.5) * size + 1), robot.name, fill='#000000', font=font, anchor='mm')
+                # draw.text(((x + 0.5) * size - tw / 2, (y + 0.5) * size - th / 2), robot.name, fill='#000000', font=font)
 
         return im
 
@@ -191,8 +204,64 @@ class Board:
 
 
 class Robot:
-    def __init__(self) -> None:
-        pass
+    def __init__(self, name: Optional[str] = None) -> None:
+        self.name = name
+
+
+def half_adder():
+    board = Board.from_ascii_art("""\
+        . . . . . . . . . .
+        . . . . ._. . . . .
+        . . . ._| |_. . . .
+        . . ._| . | | . . .
+        . . ._. | | | . . .
+        . . . |_. . | . . .
+        . . ._| . | | . . .
+        . . ._. | | | . . .
+        . . . |_. . |_. . .
+        . . . |_._. ._. | .
+        . . . . . |_._. | .
+        . . . . . . . . . .
+    """)
+    ra = Robot('A')
+    board.put(ra, 1, 3)
+    rb = Robot('B')
+    board.put(rb, 1, 6)
+    r0 = Robot()
+    board.put(r0, 3, 2)
+    r1 = Robot()
+    board.put(r1, 3, 5)
+    r2 = Robot()
+    board.put(r2, 4, 1)
+    rc = Robot('C')
+    board.put(rc, 5, 3)
+    r3 = Robot()
+    board.put(r3, 5, 2)
+    rs = Robot('S')
+    board.put(rs, 3, 8)
+
+    board.move(ra, RIGHT)
+    board.move(rb, RIGHT)
+
+    board.move(r0, DOWN)
+    board.move(r0, RIGHT)
+    board.move(r1, DOWN)
+    board.move(r1, RIGHT)
+    board.move(r2, DOWN)
+    board.move(rc, DOWN)
+    board.move(r3, DOWN)
+    board.move(rs, RIGHT)
+    board.move(rc, RIGHT)
+
+    images = board.render_all()
+    dur = 40
+    durations = [dur] * len(images)
+    durations[0] = dur * 10
+    durations[-1] = dur * 10
+    images[0].save('half_adder.gif', save_all=True, append_images=images[1:], optimize=False, duration=durations, loop=0)
+
+
+half_adder()
 
 
 def main():
@@ -230,4 +299,4 @@ def main():
     images[0].save('image.gif', save_all=True, append_images=images[1:], optimize=False, duration=durations, loop=0)
 
 
-main()
+# main()
